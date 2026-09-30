@@ -113,11 +113,14 @@ const API=`https://api.github.com/repos/${GH.o}/${GH.r}/contents/${GH.p}`;
 const tok=()=>{try{return localStorage.getItem('gh_tok')||''}catch(e){return ''}};
 const hd=raw=>{const h={Accept:raw?'application/vnd.github.raw+json':'application/vnd.github+json'};if(tok())h.Authorization='Bearer '+tok();return h};
 const msg=t=>{const m=document.getElementById('msg');if(m)m.textContent=t};
-function conn(){const t=tok();return `<div class="card" style="margin-top:18px"><b>Save to GitHub</b><div class="mt">${t?'Connected: ticks are saved to the repo for everyone.':'Read-only. Paste a GitHub token with write access to the repo to tick items (kept only in this browser).'}</div><div class="row" style="margin-top:8px">${t?'<button onclick="setTok(\'\')">Disconnect</button>':'<input type="password" id="tk" placeholder="github_pat_..." style="flex:1;min-width:200px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)"><button onclick="setTok(document.getElementById(\'tk\').value.trim())">Connect</button>'}</div><div id="msg"></div></div>`}
+function conn(){const t=tok();return `<div class="card" style="margin-top:18px"><b>Save to GitHub</b><div class="mt">${t?'Connected: ticks are saved to the repo for everyone.':'Not connected: ticks save on this device only. Paste a GitHub token with write access to the repo to share progress with all founders (token kept only in this browser).'}</div><div class="row" style="margin-top:8px">${t?'<button onclick="setTok(\'\')">Disconnect</button>':'<input type="password" id="tk" placeholder="github_pat_..." style="flex:1;min-width:200px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)"><button onclick="setTok(document.getElementById(\'tk\').value.trim())">Connect</button>'}</div><div id="msg"></div></div>`}
 function setTok(v){try{v?localStorage.setItem('gh_tok',v):localStorage.removeItem('gh_tok')}catch(e){}render()}
-async function load(){try{let r=await fetch(API+'?ref='+GH.b,{headers:hd(true),cache:'no-store'});if(!r.ok)r=await fetch(GH.p+'?t='+Date.now());const d=await r.json();st.start=d.start||st.start;st.done=d.done||{}}catch(e){}render()}
+async function load(){try{let r=await fetch(API+'?ref='+GH.b,{headers:hd(true),cache:'no-store'});if(!r.ok)r=await fetch(GH.p+'?t='+Date.now());const d=await r.json();st.start=d.start||st.start;st.done=d.done||{}}catch(e){}
+if(!tok()){try{const l=JSON.parse(localStorage.getItem('tracker_local')||'null');if(l){st.start=l.start||st.start;st.done=l.done||{}}}catch(e){}}
+render()}
+function keepLocal(){try{localStorage.setItem('tracker_local',JSON.stringify(st))}catch(e){}}
 async function commit(op){
-if(!tok()){render();msg('Connect your GitHub token below to save changes.');return}
+if(!tok()){keepLocal();msg('Saved on this device only. Connect a GitHub token below to share progress with the other founders.');return}
 try{
 const g=await fetch(API+'?ref='+GH.b,{headers:hd(false),cache:'no-store'});let cur={start:st.start,done:{}},sha;
 if(g.ok){const j=await g.json();sha=j.sha;cur=JSON.parse(decodeURIComponent(escape(atob(j.content.replace(/\n/g,'')))))}
@@ -126,8 +129,9 @@ const body={message:'Update tracker status',content:btoa(unescape(encodeURICompo
 const p=await fetch(API,{method:'PUT',headers:{...hd(false),'Content-Type':'application/json'},body:JSON.stringify(body)});
 if(!p.ok)throw new Error(p.status);
 st.start=cur.start;st.done=cur.done;render();msg('Saved to GitHub.')
-}catch(e){render();msg('Could not save ('+e.message+'). Check the token has write access to the repo.')}}
-function tg(j){commit(c=>{if(c.done[j])delete c.done[j];else c.done[j]=new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short'})})}
-function setStart(v){if(v)commit(c=>{c.start=v})}
+}catch(e){keepLocal();msg('Shown here, but not saved to GitHub ('+e.message+'). Check the token has Contents read/write access to the repo.')}}
+function apply(op){op(st);render()}
+function tg(j){const on=!st.done[j],d=new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short'});const op=c=>{if(on)c.done[j]=c.done[j]||d;else delete c.done[j]};apply(op);commit(op)}
+function setStart(v){if(!v)return;const op=c=>{c.start=v};apply(op);commit(op)}
 render();load();
 </script></body></html>
