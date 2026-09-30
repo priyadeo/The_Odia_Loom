@@ -33,6 +33,11 @@ input[type=date]{font:inherit;padding:4px 8px;border:1px solid var(--line);borde
 .mt{font-size:12px;color:var(--mut)}
 .tag{display:inline-block;font-size:11px;border:1px solid var(--line);border-radius:10px;padding:0 7px;margin-right:4px}
 button{font:inherit;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--acc);color:#fff;cursor:pointer}
+.pbs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.pb{background:var(--card);color:var(--fg);border:2px solid var(--c,var(--line));border-radius:10px;padding:7px 12px;font-size:14px}
+.pb.on{background:color-mix(in srgb,var(--c) 18%,var(--card));font-weight:600}
+.pb.ghost{border-color:var(--line);color:var(--mut);font-size:13px}
+.pb small{color:var(--mut);margin-left:4px}
 #msg{color:var(--acc);font-size:13px;min-height:18px;margin-top:6px}
 .lg span{margin-right:12px;font-size:12px;color:var(--mut)}
 </style></head><body><main><div id="app"></div></main>
@@ -77,6 +82,7 @@ const T=[
 [4,"Milestone: 10 paid orders","All",63,1],
 [4,"Milestone: 25 paid orders","All",74,1],
 [4,"Milestone: 50 paid orders","All",84,1]];
+const OPEN={};
 const O={F1:"F1 Bhubaneswar",F2:"F2 Dubai",F3:"F3 Bangalore",All:"All founders"};
 const st={start:"2026-10-10",done:{}};
 const DAY=864e5,SPAN=91,W=1200-240;
@@ -86,7 +92,9 @@ const ad=n=>new Date(t0()+n*DAY);
 const f=d=>d.toLocaleDateString('en-IN',{day:'numeric',month:'short',timeZone:'UTC'});
 const off=ms=>Math.round((ms-t0())/DAY);
 const pc=(n,d)=>d?Math.round(100*n/d):0;
-function render(){
+function tp(i){OPEN[i]=!OPEN[i];render()}
+function tpAll(v){P.forEach((p,i)=>{OPEN[i]=!!v});render()}
+function render(){const y=window.scrollY;
 const tot=T.length,dn=Object.keys(st.done).length;
 const ph=P.map((p,i)=>{const a=T.map((t,j)=>[t,j]).filter(x=>x[0][0]==i);return{a,d:a.filter(x=>st.done[x[1]]).length}});
 const now=new Date(),todayOff=off(Date.UTC(now.getFullYear(),now.getMonth(),now.getDate()));
@@ -104,11 +112,11 @@ const ov=(pz0<SPAN&&pz1>0?`<div class="pz" style="left:${Math.max(0,pz0)/SPAN*10
 h+=`<div class="gr gh"><div class="gl">Task</div><div class="gt">${wk}</div></div>`;
 P.forEach((p,i)=>{h+=`<div class="gr gp"><div class="gl" style="color:var(--c${i})">Phase ${i+1}: ${p[0]}</div><div class="gt">${wk.replace(/>W\d+ [^<]*</g,'><')}${ov}</div></div>`;
 ph[i].a.forEach(([t,j])=>{h+=`<div class="gr"><div class="gl" title="${t[1]}">${t[1]}</div><div class="gt">${wk.replace(/>W\d+ [^<]*</g,'><')}${ov}<div class="bk${st.done[j]?' d':''}" style="background:var(--c${i});left:${t[3]/SPAN*100}%;width:${t[4]/SPAN*100}%" title="${f(ad(t[3]))} to ${f(ad(t[3]+t[4]-1))}"></div></div></div>`})});
-h+=`</div></div><h2>Checklist</h2>`;
-P.forEach((p,i)=>{h+=`<div class="ph card"><h3 style="color:var(--c${i})">Phase ${i+1}: ${p[0]} <span class="mt">(${ph[i].d}/${ph[i].a.length})</span></h3><p>Goal: ${p[1]}</p>`;
+h+=`</div></div><h2>Checklist</h2><div class="pbs">${P.map((p,i)=>`<button class="pb${OPEN[i]?' on':''}" style="--c:var(--c${i})" onclick="tp(${i})">${OPEN[i]?'▾':'▸'} Phase ${i+1}: ${p[0]} <small>${ph[i].d}/${ph[i].a.length}</small></button>`).join('')}<button class="pb ghost" onclick="tpAll(1)">Show all</button><button class="pb ghost" onclick="tpAll(0)">Hide all</button></div>${P.some((p,i)=>OPEN[i])?'':'<p class="mt">Tap a phase to see its tasks. You can open more than one.</p>'}`;
+P.forEach((p,i)=>{if(!OPEN[i])return;h+=`<div class="ph card"><h3 style="color:var(--c${i})">Phase ${i+1}: ${p[0]} <span class="mt">(${ph[i].d}/${ph[i].a.length})</span></h3><p>Goal: ${p[1]}</p>`;
 ph[i].a.forEach(([t,j])=>{const d=st.done[j];h+=`<label class="it${d?' d':''}"><input type="checkbox" ${d?'checked':''} onchange="tg(${j})"><span><span class="tx">${t[1]}</span><br><span class="mt"><span class="tag">${O[t[2]]}</span>${f(ad(t[3]))} to ${f(ad(t[3]+t[4]-1))}${d?' | done '+d:''}</span></span></label>`});h+=`</div>`});
 h+=conn();
-document.getElementById('app').innerHTML=h}
+document.getElementById('app').innerHTML=h;window.scrollTo(0,y)}
 const API=`https://api.github.com/repos/${GH.o}/${GH.r}/contents/${GH.p}`;
 const tok=()=>{try{return localStorage.getItem('gh_tok')||''}catch(e){return ''}};
 const hd=raw=>{const h={Accept:raw?'application/vnd.github.raw+json':'application/vnd.github+json'};if(tok())h.Authorization='Bearer '+tok();return h};
